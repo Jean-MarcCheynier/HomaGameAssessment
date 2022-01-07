@@ -1,4 +1,8 @@
-const dictionaryList = [
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const fs = require("fs");
+const path = require("path");
+const defaultDictionaryList = [
     'coucou',
     'hematome',
     'jeux',
@@ -8,7 +12,7 @@ const dictionaryList = [
     'cesttretretrelong',
     'abcgef',
 ];
-const longestWord = (s) => {
+const longestWord = (s, dictionaryList = defaultDictionaryList) => {
     let longest = '';
     for (const word of dictionaryList) {
         if (longest.length === 12)
@@ -33,8 +37,16 @@ const longestWord = (s) => {
     }
     return longest;
 };
+class TaskWordFinder {
+    longestWordFinder(fileName, s) {
+        const data = fs.readFileSync(fileName, 'utf8');
+        this.longest = longestWord(s, data.split('\n'));
+    }
+}
 const main = () => {
-    console.log(longestWord('abcdefghijkl'));
+    const T = new TaskWordFinder();
+    T.longestWordFinder(path.resolve(__dirname, '../test.txt'), 'optonoceari');
+    console.log(T.longest);
 };
 main();
 //# sourceMappingURL=index.js.map

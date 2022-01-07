@@ -1,4 +1,7 @@
-const dictionaryList = [
+import * as fs from 'fs';
+import * as path from 'path';
+
+const defaultDictionaryList: string[] = [
   'coucou',
   'hematome',
   'jeux',
@@ -9,7 +12,10 @@ const dictionaryList = [
   'abcgef',
 ];
 
-const longestWord = (s: string): string => {
+const longestWord = (
+  s: string,
+  dictionaryList: string[] = defaultDictionaryList,
+): string => {
   /* Check that s has at most 12 letters from A*/
   let longest = '';
   for (const word of dictionaryList) {
@@ -36,8 +42,20 @@ const longestWord = (s: string): string => {
   return longest;
 };
 
+class TaskWordFinder {
+  public longest: string;
+  public longestWordFinder(fileName: string, s: string) {
+    // TODO
+    const data = fs.readFileSync(fileName, 'utf8');
+    this.longest = longestWord(s, data.split('\n'));
+    // TODO
+  }
+}
+
 const main = () => {
-  console.log(longestWord('abcdefghijkl'));
+  const T = new TaskWordFinder();
+  T.longestWordFinder(path.resolve(__dirname, '../test.txt'), 'optonoceari');
+  console.log(T.longest);
 };
 
 main();
