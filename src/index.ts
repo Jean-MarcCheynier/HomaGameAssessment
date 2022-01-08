@@ -12,39 +12,92 @@ const dictionaryList: string[] = [
   'abcgef',
 ];
 
-export type Tree = { [key: string]: Node };
-
-export type Node = {
+export type Tree<T> = { [key: string]: Node<T> };
+export type Node<T> = T & { children?: Tree<T> };
+export interface MySearchable {
   marked: boolean;
   value: string;
-  end: boolean;
-  children?: Tree;
-};
+  end?: boolean;
+  index?: number;
+  acc?: string;
+  s?: string;
+  depth?: number;
+}
 
-class DictionaryTree {
-  private tree: Tree = {};
+class TreeFactory {
+  static listToTree = (list: string[]): Tree<MySearchable> => {
+    const tree: Tree<MySearchable> = {};
+    let subtree: Tree<MySearchable>;
+    let cursor: Node<MySearchable>;
+
+    list.forEach((word: string, wordIndex) => {
+      subtree = tree;
+      word.split('').forEach((letter) => {
+        subtree[letter] = subtree[letter]
+          ? subtree[letter]
+          : { marked: false, value: letter, children: {} };
+        cursor = subtree[letter];
+        subtree = cursor.children;
+      });
+      cursor.end = true;
+      cursor.index = wordIndex;
+    });
+    return tree;
+  };
+}
+
+class TreeParser {
+  private nodeToVisit: Node<MySearchable>[];
+  private currentNode: Node<MySearchable>;
+
+  constructor(tree: Tree<MySearchable>) {
+    this.nodeToVisit = Object.values(tree);
+  }
+
+  public searchLongestWord = (s: string): string[] => {
+    const match: Node<MySearchable>[] = [];
+    this.nodeToVisit.forEach((node) => {
+      node.depth = 0;
+      node.acc = node.value;
+      node.s = s;
+    });
+    while (this.nodeToVisit.length !== 0) {
+      const node = this.visitNextNode();
+      if (node) {
+        match.push(node);
+      }
+    }
+    return match.map((node) => node.acc).sort((a, b) => b.length - a.length);
+  };
+
+  private visitNextNode = (): Node<MySearchable> | void => {
+    const currentNode = this.nodeToVisit.shift();
+    const { value, s, acc, end } = currentNode;
+    if (s.includes(value)) {
+      const children: Node<MySearchable>[] = Object.values(
+        currentNode.children,
+      );
+      children.forEach((node) => {
+        node.s = s.replace(value, '');
+        node.acc = `${acc}${node.value}`;
+      });
+      this.nodeToVisit = [...children, ...this.nodeToVisit];
+      if (end) {
+        return currentNode;
+      }
+    } else {
+      return;
+    }
+  };
+}
+
+/* class DictionaryTree {
+  private tree: Tree<MySearchable> = {};
   constructor(dictionaryList: string[]) {
-    this.initTree(dictionaryList);
+    this.tree = TreeFactory.listToTree(dictionaryList);
 
     console.log(JSON.stringify(this.tree));
   }
-
-  private initTree = (dictionaryList: string[]): void => {
-    dictionaryList.forEach((item) => {
-      let cursor = this.tree;
-      item.split('').forEach((char, index) => {
-        cursor[char] = {
-          value: char,
-          children: {},
-          ...cursor[char],
-        };
-        const isEnd = item.length - 1 === index;
-        if (isEnd) cursor[char].end = true;
-
-        cursor = cursor[char].children;
-      });
-    });
-  };
 
   deepExplore = (s: string) => {
     const store: string[] = [];
@@ -58,7 +111,7 @@ class DictionaryTree {
   };
 
   explore = (
-    node: Node,
+    node: Node<MySearchable>,
     s: string,
     acc: string,
     store: string[],
@@ -82,15 +135,15 @@ class DictionaryTree {
       return;
     }
   };
-}
+} */
 
 class TaskWordFinder {
   public longest: string;
   public longestWordFinder(fileName: string, s: string) {
     const data = fs.readFileSync(__dirname + '/' + fileName, 'utf8');
-    const D = new DictionaryTree(data.split('\n'));
-    const acc = D.deepExplore(s);
-    return acc;
+    const dictionaryTree = TreeFactory.listToTree(data.split('\n'));
+    const myTreeParser = new TreeParser(dictionaryTree);
+    return myTreeParser.searchLongestWord(s);
   }
 }
 
