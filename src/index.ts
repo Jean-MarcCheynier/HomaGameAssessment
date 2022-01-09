@@ -1,43 +1,47 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const dictionaryList: string[] = [
-  'coucou',
-  'chematome',
-  'jeux',
-  'bougie',
-  'telephone',
-  'abcdef',
-  'cesttretretrelong',
-  'abcgef',
-];
+export type Tree<T> = T & { children: Tree<T>[] };
 
-export type Tree<T> = { [key: string]: Node<T> };
-export type Node<T> = T & { children?: Tree<T> };
 export interface MySearchable {
-  marked: boolean;
-  value: string;
+  marked?: boolean;
+  value?: string;
   end?: boolean;
   index?: number;
   acc?: string;
   s?: string;
   depth?: number;
+  depthMax?: number;
 }
+
+const byLength = (a: string, b: string) => b.length - a.length;
+const sortString = (s: string) => s.split('').sort().join('');
 
 class TreeFactory {
   static listToTree = (list: string[]): Tree<MySearchable> => {
-    const tree: Tree<MySearchable> = {};
-    let subtree: Tree<MySearchable>;
-    let cursor: Node<MySearchable>;
+    const tree: Tree<MySearchable> = { value: 'INIT', depth: 0, children: [] };
+    let cursor: Tree<MySearchable>;
 
-    list.forEach((word: string, wordIndex) => {
-      subtree = tree;
-      word.split('').forEach((letter) => {
-        subtree[letter] = subtree[letter]
-          ? subtree[letter]
-          : { marked: false, value: letter, children: {} };
-        cursor = subtree[letter];
-        subtree = cursor.children;
+    list.sort(byLength).forEach((word: string, wordIndex) => {
+      cursor = tree;
+      word = sortString(word);
+      word.split('').forEach((letter, index) => {
+        const node: Tree<MySearchable> = cursor.children.find(
+          (item) => item.value === letter,
+        );
+        if (node) {
+          cursor = node;
+        } else {
+          cursor.children.push({
+            marked: false,
+            value: letter,
+            depth: index + 1,
+            children: [],
+          });
+          cursor = cursor.children[cursor.children.length - 1];
+        }
+        cursor.depthMax =
+          cursor.depthMax > word.length ? cursor.depthMax : word.length;
       });
       cursor.end = true;
       cursor.index = wordIndex;
@@ -47,110 +51,78 @@ class TreeFactory {
 }
 
 class TreeParser {
-  private nodeToVisit: Node<MySearchable>[];
-  private currentNode: Node<MySearchable>;
+  private tree: Tree<MySearchable>;
+  private nodeToVisit: Tree<MySearchable>[];
+  private longuest: Tree<MySearchable> = { depth: 0, children: [] };
+  public nbVisited = 0;
 
   constructor(tree: Tree<MySearchable>) {
-    this.nodeToVisit = Object.values(tree);
+    this.tree = tree;
+    this.nodeToVisit = tree.children;
   }
 
-  public searchLongestWord = (s: string): string[] => {
-    const match: Node<MySearchable>[] = [];
+  public searchLongestWord = (s: string): Tree<MySearchable> => {
     this.nodeToVisit.forEach((node) => {
-      node.depth = 0;
-      node.acc = node.value;
       node.s = s;
     });
     while (this.nodeToVisit.length !== 0) {
       const node = this.visitNextNode();
       if (node) {
-        match.push(node);
+        this.longuest = node;
       }
     }
-    return match.map((node) => node.acc).sort((a, b) => b.length - a.length);
+    return this.longuest;
   };
 
-  private visitNextNode = (): Node<MySearchable> | void => {
+  private visitNextNode = (): Tree<MySearchable> | void => {
     const currentNode = this.nodeToVisit.shift();
-    const { value, s, acc, end } = currentNode;
+    const { value, s, end, depth, depthMax, index } = currentNode;
+    this.nbVisited++;
+    if (this.longuest && this.longuest.depth >= depthMax) {
+      return;
+    }
     if (s.includes(value)) {
-      const children: Node<MySearchable>[] = Object.values(
-        currentNode.children,
-      );
+      const children: Tree<MySearchable>[] = currentNode.children;
       children.forEach((node) => {
         node.s = s.replace(value, '');
-        node.acc = `${acc}${node.value}`;
       });
       this.nodeToVisit = [...children, ...this.nodeToVisit];
       if (end) {
-        return currentNode;
+        if (this.longuest.depth < depth) {
+          return currentNode;
+        }
       }
-    } else {
-      return;
     }
+    return;
   };
 }
 
-/* class DictionaryTree {
-  private tree: Tree<MySearchable> = {};
-  constructor(dictionaryList: string[]) {
-    this.tree = TreeFactory.listToTree(dictionaryList);
-
-    console.log(JSON.stringify(this.tree));
-  }
-
-  deepExplore = (s: string) => {
-    const store: string[] = [];
-    for (const [key, node] of Object.entries(this.tree)) {
-      if (!node.marked) {
-        console.log('Exploring subtree %s', key);
-        this.explore(node, s, '', store, 0);
-      }
-    }
-    return store;
-  };
-
-  explore = (
-    node: Node<MySearchable>,
-    s: string,
-    acc: string,
-    store: string[],
-    depth: number,
-  ) => {
-    console.log('Explore node %s - Depth : %s', node.value, depth);
-    node.marked = true;
-    acc += node.value;
-    if (s.includes(node.value)) {
-      if (node.end) {
-        console.log('Found it');
-        console.log(acc);
-        store.push(acc);
-      }
-      for (const [key, child] of Object.entries(node.children)) {
-        if (!child.marked) {
-          this.explore(child, s.replace(node.value, ''), acc, store, depth + 1);
-        }
-      }
-    } else {
-      return;
-    }
-  };
-} */
-
 class TaskWordFinder {
-  public longest: string;
-  public longestWordFinder(fileName: string, s: string) {
+  private dictionaryTree: Tree<MySearchable>;
+  private dictionary: string[];
+
+  constructor(fileName: string) {
     const data = fs.readFileSync(__dirname + '/' + fileName, 'utf8');
-    const dictionaryTree = TreeFactory.listToTree(data.split('\n'));
-    const myTreeParser = new TreeParser(dictionaryTree);
-    return myTreeParser.searchLongestWord(s);
+    this.dictionary = data.split('\n');
+    this.dictionaryTree = TreeFactory.listToTree(this.dictionary);
+  }
+  public longestWordFinder(s: string): string {
+    const myTreeParser = new TreeParser(this.dictionaryTree);
+    const node = myTreeParser.searchLongestWord(s);
+    return this.dictionary[node.index];
   }
 }
 
 const main = () => {
-  const T = new TaskWordFinder();
-  const acc = T.longestWordFinder('../test.txt', 'optonoceari');
-  console.log(acc.sort((a, b) => b.length - a.length));
+  const taskWordFinder = new TaskWordFinder('../test.txt');
+  let longuest = taskWordFinder.longestWordFinder('optonoceari');
+  console.log(longuest);
+  longuest = taskWordFinder.longestWordFinder('pldgjghrfe');
+  console.log(longuest);
+  longuest = taskWordFinder.longestWordFinder('hjgfdfgd');
+  console.log(longuest);
+  longuest = taskWordFinder.longestWordFinder('pldghgfghfjghrfe');
+  console.log(longuest);
 };
 
 main();
