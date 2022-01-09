@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as path from 'path';
 
 export type Tree<T> = T & { children: Tree<T>[] };
 
@@ -53,15 +52,20 @@ class TreeFactory {
 class TreeParser {
   private tree: Tree<MySearchable>;
   private nodeToVisit: Tree<MySearchable>[];
-  private longuest: Tree<MySearchable> = { depth: 0, children: [] };
-  public nbVisited = 0;
+  private longuest: Tree<MySearchable>;
 
   constructor(tree: Tree<MySearchable>) {
     this.tree = tree;
-    this.nodeToVisit = tree.children;
   }
 
+  public refresh = () => {
+    this.nodeToVisit = [];
+    this.longuest = { depth: 0, children: [] };
+    this.nodeToVisit = [...this.tree.children];
+  };
+
   public searchLongestWord = (s: string): Tree<MySearchable> => {
+    this.refresh();
     this.nodeToVisit.forEach((node) => {
       node.s = s;
     });
@@ -77,7 +81,7 @@ class TreeParser {
   private visitNextNode = (): Tree<MySearchable> | void => {
     const currentNode = this.nodeToVisit.shift();
     const { value, s, end, depth, depthMax, index } = currentNode;
-    this.nbVisited++;
+
     if (this.longuest && this.longuest.depth >= depthMax) {
       return;
     }
@@ -98,6 +102,7 @@ class TreeParser {
 }
 
 class TaskWordFinder {
+  public longest: string;
   private dictionaryTree: Tree<MySearchable>;
   private dictionary: string[];
 
@@ -105,24 +110,26 @@ class TaskWordFinder {
     const data = fs.readFileSync(__dirname + '/' + fileName, 'utf8');
     this.dictionary = data.split('\n');
     this.dictionaryTree = TreeFactory.listToTree(this.dictionary);
+    console.log(this.dictionary.includes('algorithm'));
   }
-  public longestWordFinder(s: string): string {
+  public longestWordFinder(s: string): void {
     const myTreeParser = new TreeParser(this.dictionaryTree);
     const node = myTreeParser.searchLongestWord(s);
-    return this.dictionary[node.index];
+    this.longest = this.dictionary[node.index];
+    console.log(node.index);
   }
 }
 
 const main = () => {
   const taskWordFinder = new TaskWordFinder('../test.txt');
-  let longuest = taskWordFinder.longestWordFinder('optonoceari');
-  console.log(longuest);
-  longuest = taskWordFinder.longestWordFinder('pldgjghrfe');
-  console.log(longuest);
-  longuest = taskWordFinder.longestWordFinder('hjgfdfgd');
-  console.log(longuest);
-  longuest = taskWordFinder.longestWordFinder('pldghgfghfjghrfe');
-  console.log(longuest);
+  taskWordFinder.longestWordFinder('optonoceari');
+  console.log(taskWordFinder.longest);
+  taskWordFinder.longestWordFinder('jtgomelarih');
+  console.log(taskWordFinder.longest);
+  taskWordFinder.longestWordFinder('pmeornoia');
+  console.log(taskWordFinder.longest);
+  taskWordFinder.longestWordFinder('rpneruhpishant');
+  console.log(taskWordFinder.longest);
 };
 
 main();
