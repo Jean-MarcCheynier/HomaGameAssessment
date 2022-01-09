@@ -18,7 +18,7 @@ I added some console output to display the timing of the function *'longestWordF
 Node 16.13.1 or later
 
 ### How to run:  
-run `yarn` to install the dependencies
-run  `yarn build` to build the project ( outdir file is *./dist*)
+run `yarn` to install the dependencies  
+run  `yarn build` to build the project ( outdir file is *./dist*)  
 run `yarn start` to run the script ( the script will take *'test.txt'* as dictionary and *'optonoceari'* as a char sequence)
 
