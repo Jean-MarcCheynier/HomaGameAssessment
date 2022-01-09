@@ -20,14 +20,9 @@ class TaskWordFinder {
 
 const main = () => {
   const taskWordFinder = new TaskWordFinder('../test.txt');
+  console.time('longestWordFinder');
   taskWordFinder.longestWordFinder('optonoceari');
-  console.log(taskWordFinder.longest);
-  taskWordFinder.longestWordFinder('jtgomelarih');
-  console.log(taskWordFinder.longest);
-  taskWordFinder.longestWordFinder('pmeornoia');
-  console.log(taskWordFinder.longest);
-  taskWordFinder.longestWordFinder('rpneruhpishant');
-  console.log(taskWordFinder.longest);
+  console.timeEnd('longestWordFinder');
 };
 
 main();
